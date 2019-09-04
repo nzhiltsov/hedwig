@@ -14,6 +14,7 @@ from datasets.bert_processors.reuters_processor import ReutersProcessor
 from datasets.bert_processors.sogou_processor import SogouProcessor
 from datasets.bert_processors.sst_processor import SST2Processor
 from datasets.bert_processors.yelp2014_processor import Yelp2014Processor
+from datasets.bert_processors.empnum_processor import  EmpNumProcessor
 from models.bert.args import get_args
 from models.bert.model import BertForSequenceClassification
 from utils.io import PYTORCH_PRETRAINED_BERT_CACHE
@@ -61,6 +62,7 @@ if __name__ == '__main__':
         torch.cuda.manual_seed_all(args.seed)
 
     dataset_map = {
+        'EmpNum': EmpNumProcessor,
         'SST-2': SST2Processor,
         'Reuters': ReutersProcessor,
         'IMDB': IMDBProcessor,
