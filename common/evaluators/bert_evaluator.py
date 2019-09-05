@@ -97,7 +97,8 @@ class BertEvaluator(object):
         f1 = metrics.f1_score(target_labels, predicted_labels, average='micro')
         avg_loss = total_loss / nb_eval_steps
         lc  = Counter(target_labels)
-        weighted_accuracy = metrics.accuracy_score(target_labels, predicted_labels, sample_weight={0: 1, 1: lc[0] / lc[1]})
+        class_weights = {0: 1, 1: lc[0] / lc[1]}
+        weighted_accuracy = metrics.accuracy_score(target_labels, predicted_labels, sample_weight=[class_weights.get(x) for x in target_labels])
         auc = metrics.roc_auc_score(y_true=target_labels, y_score=predicted_probs)
 
         return [accuracy, precision, recall, f1, avg_loss, weighted_accuracy, auc], ['accuracy', 'precision', 'recall', 'f1', 'avg_loss', 'w_accuracy', 'auc']
