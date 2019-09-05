@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from sklearn import metrics
 from torch.utils.data import DataLoader, SequentialSampler, TensorDataset
 from tqdm import tqdm
+from collections import Counter
 
 from datasets.bert_processors.abstract_processor import convert_examples_to_features, \
     convert_examples_to_hierarchical_features
@@ -57,7 +58,7 @@ class BertEvaluator(object):
 
         total_loss = 0
         nb_eval_steps, nb_eval_examples = 0, 0
-        predicted_labels, target_labels = list(), list()
+        predicted_labels, predicted_probs, target_labels = list(), list(), list()
 
         for input_ids, input_mask, segment_ids, label_ids in tqdm(eval_dataloader, desc="Evaluating", disable=silent):
             input_ids = input_ids.to(self.args.device)
@@ -73,6 +74,8 @@ class BertEvaluator(object):
                 target_labels.extend(label_ids.cpu().detach().numpy())
                 loss = F.binary_cross_entropy_with_logits(logits, label_ids.float(), size_average=False)
             else:
+                probs = F.sigmoid(logits).cpu().detach().numpy()
+                predicted_probs.extend(probs[-1:])
                 predicted_labels.extend(torch.argmax(logits, dim=1).cpu().detach().numpy())
                 target_labels.extend(torch.argmax(label_ids, dim=1).cpu().detach().numpy())
                 loss = F.cross_entropy(logits, torch.argmax(label_ids, dim=1))
@@ -88,9 +91,13 @@ class BertEvaluator(object):
 
         predicted_labels, target_labels = np.array(predicted_labels), np.array(target_labels)
         accuracy = metrics.accuracy_score(target_labels, predicted_labels)
+
         precision = metrics.precision_score(target_labels, predicted_labels, average='micro')
         recall = metrics.recall_score(target_labels, predicted_labels, average='micro')
         f1 = metrics.f1_score(target_labels, predicted_labels, average='micro')
         avg_loss = total_loss / nb_eval_steps
+        lc  = Counter(target_labels)
+        weighted_accuracy = metrics.accuracy_score(target_labels, predicted_labels, sample_weight={0: 1, 1: lc[0] / lc[1]})
+        auc = metrics.roc_auc_score(y_true=target_labels, y_score=predicted_probs)
 
-        return [accuracy, precision, recall, f1, avg_loss], ['accuracy', 'precision', 'recall', 'f1', 'avg_loss']
+        return [accuracy, precision, recall, f1, avg_loss, weighted_accuracy, auc], ['accuracy', 'precision', 'recall', 'f1', 'avg_loss', 'w_accuracy', 'auc']

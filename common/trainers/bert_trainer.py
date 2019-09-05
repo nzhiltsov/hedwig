@@ -33,11 +33,11 @@ class BertTrainer(object):
         if args.local_rank != -1:
             self.num_train_optimization_steps = args.num_train_optimization_steps // torch.distributed.get_world_size()
 
-        self.log_header = 'Epoch Iteration Progress   Dev/Acc.  Dev/Pr.  Dev/Re.   Dev/F1   Dev/Loss'
-        self.log_template = ' '.join('{:>5.0f},{:>9.0f},{:>6.0f}/{:<5.0f} {:>6.4f},{:>8.4f},{:8.4f},{:8.4f},{:10.4f}'.split(','))
+        self.log_header = 'Epoch Iteration Progress   Dev/Acc.  Dev/Pr.  Dev/Re.   Dev/F1   Dev/Loss   Dev/W_Acc.   Dev/AUC'
+        self.log_template = ' '.join('{:>5.0f},{:>9.0f},{:>6.0f}/{:<5.0f} {:>6.4f},{:>8.4f},{:8.4f},{:8.4f},{:10.4f},{:>8.4f},{:>8.4f}'.split(','))
 
         self.iterations, self.nb_tr_steps, self.tr_loss = 0, 0, 0
-        self.best_dev_f1, self.unimproved_iters = 0, 0
+        self.best_dev_w_acc, self.unimproved_iters = 0, 0
         self.early_stop = False
 
     def train_epoch(self, train_dataloader):
@@ -111,22 +111,22 @@ class BertTrainer(object):
         for epoch in trange(int(self.args.epochs), desc="Epoch"):
             self.train_epoch(train_dataloader)
             dev_evaluator = BertEvaluator(self.model, self.processor, self.args, split='dev')
-            dev_acc, dev_precision, dev_recall, dev_f1, dev_loss = dev_evaluator.get_scores()[0]
+            dev_acc, dev_precision, dev_recall, dev_f1, dev_loss, dev_w_acc, dev_auc = dev_evaluator.get_scores()[0]
 
             # Print validation results
             tqdm.write(self.log_header)
             tqdm.write(self.log_template.format(epoch + 1, self.iterations, epoch + 1, self.args.epochs,
-                                                dev_acc, dev_precision, dev_recall, dev_f1, dev_loss))
+                                                dev_acc, dev_precision, dev_recall, dev_f1, dev_loss, dev_w_acc, dev_auc))
 
             # Update validation results
-            if dev_f1 > self.best_dev_f1:
+            if dev_w_acc > self.best_dev_w_acc:
                 self.unimproved_iters = 0
-                self.best_dev_f1 = dev_f1
+                self.best_dev_w_acc = dev_w_acc
                 torch.save(self.model, self.snapshot_path)
 
             else:
                 self.unimproved_iters += 1
                 if self.unimproved_iters >= self.args.patience:
                     self.early_stop = True
-                    tqdm.write("Early Stopping. Epoch: {}, Best Dev F1: {}".format(epoch, self.best_dev_f1))
+                    tqdm.write("Early Stopping. Epoch: {}, Best Dev W_Acc: {}".format(epoch, self.best_dev_w_acc))
                     break
