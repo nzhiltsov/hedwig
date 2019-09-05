@@ -22,7 +22,7 @@ from utils.optimization import BertAdam
 from utils.tokenization import BertTokenizer
 
 # String templates for logging results
-LOG_HEADER = 'Split  Dev/Acc.  Dev/Pr.  Dev/Re.   Dev/F1   Dev/Loss'
+LOG_HEADER = 'Split  Dev/Acc.  Dev/Pr.  Dev/Re.   Dev/F1   Dev/Loss   Dev/W_Acc.   Dev/AUC'
 LOG_TEMPLATE = ' '.join('{:>5s},{:>9.4f},{:>8.4f},{:8.4f},{:8.4f},{:10.4f},{:8.4f},{:8.4f}'.split(','))
 
 
